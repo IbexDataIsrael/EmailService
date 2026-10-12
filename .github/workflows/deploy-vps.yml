@@ -1,0 +1,44 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install deploy key
+        env:
+          VPS_DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          # The secret is the private key wrapped in base64 (one line), so
+          # line breaks and CRLF cannot get mangled in copy-paste.
+          echo "$VPS_DEPLOY_KEY" | tr -d ' \r\n\t' | base64 -d > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Fail early with a clear message if the key is not valid.
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null
+
+      - name: Pin server host key
+        run: |
+          set -euo pipefail
+          # Pinned VPS host key - no dynamic keyscan, same as tag_print.
+          echo "167.233.238.179 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH122dZIBcsUKG8ICfdhUf3l9HiZLJcCTrcZqJ0TGXpm" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy
+        # authorized_keys forces the wrapper, which only accepts the exact
+        # command "deploy-emailservice" - nothing sent here chooses what runs.
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/id_ed25519 zvi@167.233.238.179 deploy-emailservice
