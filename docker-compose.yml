@@ -1,0 +1,18 @@
+# Snippet to add beside the existing services in the minicrm docker-compose.yml.
+# It expects this project to live in a folder named "email-service" next to that
+# compose file. There is deliberately no "ports:" section: the service is
+# reachable only inside the minicrm_default docker network, at
+# http://email-service:8000/send.
+
+services:
+  email-service:
+    build: ./email-service
+    env_file: ./email-service/.env
+    restart: unless-stopped
+    networks:
+      - minicrm_default
+
+# Only needed when this compose file lives outside the minicrm project:
+networks:
+  minicrm_default:
+    external: true

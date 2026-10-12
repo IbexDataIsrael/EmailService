@@ -1,0 +1,33 @@
+# Local development setup: postgres + email-service on a private compose network.
+# Ports 8000 (app) and 5432 (db) are published to localhost for easy testing.
+# This file is NOT for deployment - for that, use the snippet in docker-compose.yml
+# inside the minicrm project.
+#
+#   docker compose -f docker-compose.local.yml up -d --build     start
+#   docker compose -f docker-compose.local.yml logs -f           watch logs
+#   docker compose -f docker-compose.local.yml down              stop (add -v to wipe the db)
+
+services:
+  email-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: emaildb
+    ports:
+      - "5433:5432"
+    volumes:
+      - emaildb-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  email-service:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - email-postgres
+    restart: unless-stopped
+
+volumes:
+  emaildb-data:
